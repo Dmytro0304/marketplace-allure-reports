@@ -23,6 +23,12 @@ jobs:
         with:
           node-version: 22
 
+      - name: Set up Java (Allure CLI)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Install deps
         run: npm ci
 
@@ -40,4 +46,25 @@ jobs:
           path: ./allure-report
 
       - name: Deploy to GitHub Pages
+        id: deploy
         uses: actions/deploy-pages@v4
+
+      # SLACK_WEBHOOK_URL: GitHub → repo marketplace-allure-reports → Settings → Secrets and variables → Actions (не в git).
+      - name: Notify Slack
+        if: steps.deploy.outcome == 'success'
+        continue-on-error: true
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "${SLACK_WEBHOOK_URL}" ]; then
+            echo "SLACK_WEBHOOK_URL not set; skip Slack notify"
+            exit 0
+          fi
+          DATE=$(date -u +'%Y-%m-%d')
+          REPORT_URL="${{ steps.deploy.outputs.page_url }}"
+          if [ -z "$REPORT_URL" ]; then
+            REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+          fi
+          curl -sS -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-type: application/json' \
+            --data "$(printf '%s' "{\"text\":\"✅ Marketplace Allure report — ${DATE}\\n${REPORT_URL}\"}")"
