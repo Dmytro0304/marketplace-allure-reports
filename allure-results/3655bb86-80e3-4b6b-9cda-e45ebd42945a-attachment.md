@@ -1,0 +1,68 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: api/auth.register.spec.ts >> Auth API register @api >> sign up with unique email @destructive (Postman parity: Sign Up)
+- Location: e2e/tests/api/auth.register.spec.ts:19:9
+
+# Error details
+
+```
+Error: expect(received).toBeTruthy()
+
+Received: false
+```
+
+# Test source
+
+```ts
+  1  | import { test, expect } from '@playwright/test';
+  2  | import { getApiBaseUrl, getDeviceType } from '../../utils/env';
+  3  | import { expectJsonSuccess } from '../../utils/validators';
+  4  | import { apiLoginBlockedByWaf } from '../../utils/api-waf-guard';
+  5  | import { generateDisposalRegisterEmail } from '../../utils/register-email';
+  6  | 
+  7  | test.describe('Auth API register @api', () => {
+  8  |     let apiBlockedByWaf = false;
+  9  |     test.beforeAll(async ({ request }) => {
+  10 |         apiBlockedByWaf = await apiLoginBlockedByWaf(request);
+  11 |     });
+  12 |     test.beforeEach(() => {
+  13 |         test.skip(
+  14 |             apiBlockedByWaf,
+  15 |             'Cloudflare/WAF returns challenge HTML for programmatic API calls — set E2E_API_INTERNAL_URL (e.g. https://marketplace.test/api) or run from allowlisted IP.'
+  16 |         );
+  17 |     });
+  18 | 
+  19 |     test('sign up with unique email @destructive (Postman parity: Sign Up)', async ({ request }) => {
+  20 |         test.skip(process.env.REGISTER_RUN !== '1', 'Registration tests disabled (set REGISTER_RUN=1)');
+  21 | 
+  22 |         const email = process.env.REGISTER_TEST_EMAIL?.trim() || generateDisposalRegisterEmail();
+  23 |         const password = process.env.REGISTER_TEST_PASSWORD ?? 'Test12345!';
+  24 | 
+  25 |         const res = await request.post(`${getApiBaseUrl()}/auth/register`, {
+  26 |             headers: {
+  27 |                 Accept: 'application/json',
+  28 |                 'Content-Type': 'application/json',
+  29 |                 'Device-Type': getDeviceType(),
+  30 |             },
+  31 |             data: {
+  32 |                 email,
+  33 |                 password,
+  34 |                 password_confirmation: password,
+  35 |             },
+  36 |         });
+  37 | 
+> 38 |         expect(res.ok()).toBeTruthy();
+     |                          ^ Error: expect(received).toBeTruthy()
+  39 |         const body = (await res.json()) as Record<string, unknown>;
+  40 |         expectJsonSuccess(body);
+  41 |         expect((body as { access_token?: string }).access_token).toBeTruthy();
+  42 |     });
+  43 | });
+  44 | 
+```
