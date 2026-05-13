@@ -1,3 +1,6 @@
+# Generated locally / in CI (HTML не коммитим — в git только allure-results)
+allure-report/
+
 # Logs
 logs
 *.log
